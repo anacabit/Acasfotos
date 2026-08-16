@@ -1,1 +1,1014 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a0533">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AcasPhoto">
+<link rel="manifest" href="manifest.json">
+<title>AcasPhoto — Editor</title>
+<style>
+:root {
+  --ink:#1a0533; --plum:#3b0764; --violet:#7c3aed;
+  --lilac:#c4b5fd; --blush:#f5d0fe; --white:#faf5ff;
+  --glass:rgba(124,58,237,0.12); --radius:18px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--ink);color:var(--white);font-family:'Segoe UI',system-ui,sans-serif;
+  min-height:100dvh;overflow-x:hidden;overscroll-behavior:none}
 
+/* SPLASH */
+#splash{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100dvh;gap:24px;padding:32px;
+  background:linear-gradient(160deg,var(--ink) 0%,var(--plum) 100%)}
+#splash h1{font-size:clamp(2.2rem,8vw,3.5rem);font-weight:800;letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--blush),var(--lilac),var(--violet));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#splash p{color:var(--lilac);font-size:1rem;text-align:center;max-width:280px}
+.splash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:360px;margin-top:8px}
+.splash-btn{background:var(--glass);border:1px solid rgba(196,181,253,.25);border-radius:var(--radius);
+  padding:20px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;
+  cursor:pointer;color:var(--white);font-size:.85rem;text-align:center;font-weight:600}
+.splash-btn:active{transform:scale(.96);background:rgba(124,58,237,.25)}
+.splash-btn .icon{font-size:2rem}
+
+/* APP */
+#app{display:none;flex-direction:column;min-height:100dvh}
+.top-bar{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px 10px;background:linear-gradient(180deg,var(--plum) 0%,transparent 100%);
+  position:sticky;top:0;z-index:10}
+.top-bar h2{font-size:1.1rem;font-weight:700;color:var(--lilac)}
+.icon-btn{background:var(--glass);border:1px solid rgba(196,181,253,.2);border-radius:50%;
+  width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;cursor:pointer;color:var(--white)}
+.icon-btn:active{transform:scale(.9)}
+
+/* CANVAS */
+#canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;
+  padding:12px;min-height:260px;position:relative;overflow:hidden}
+#main-canvas{max-width:100%;max-height:58dvh;border-radius:12px;
+  box-shadow:0 0 40px rgba(124,58,237,.4);display:block;touch-action:none}
+#canvas-placeholder{text-align:center;color:var(--lilac);opacity:.6;
+  display:flex;flex-direction:column;gap:10px;align-items:center}
+#canvas-placeholder .big{font-size:3rem}
+
+/* CROP OVERLAY */
+#crop-overlay{position:absolute;top:0;left:0;width:100%;height:100%;
+  display:none;align-items:center;justify-content:center;z-index:5}
+#crop-box{position:absolute;border:2px solid var(--blush);box-shadow:0 0 0 9999px rgba(0,0,0,.5);
+  cursor:move;touch-action:none}
+.crop-handle{position:absolute;width:22px;height:22px;background:var(--blush);
+  border-radius:4px;touch-action:none}
+.crop-handle.tl{top:-11px;left:-11px;cursor:nw-resize}
+.crop-handle.tr{top:-11px;right:-11px;cursor:ne-resize}
+.crop-handle.bl{bottom:-11px;left:-11px;cursor:sw-resize}
+.crop-handle.br{bottom:-11px;right:-11px;cursor:se-resize}
+#crop-confirm{position:absolute;bottom:12px;display:flex;gap:10px}
+#crop-confirm button{padding:10px 22px;border-radius:20px;border:none;
+  font-weight:700;font-size:.9rem;cursor:pointer}
+#btn-crop-ok{background:var(--violet);color:#fff}
+#btn-crop-cancel{background:rgba(255,255,255,.15);color:#fff}
+
+/* TABS */
+.tabs{display:flex;overflow-x:auto;gap:6px;padding:8px 16px;scrollbar-width:none;
+  border-top:1px solid rgba(196,181,253,.1)}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{flex-shrink:0;padding:8px 16px;border-radius:20px;
+  border:1px solid rgba(196,181,253,.2);background:transparent;
+  color:var(--lilac);font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap}
+.tab-btn.active{background:var(--violet);border-color:var(--violet);color:var(--white)}
+.tab-btn:active{transform:scale(.95)}
+
+/* PANELS */
+.panel{display:none;padding:14px 16px}
+.panel.active{display:block}
+
+/* SLIDERS */
+.slider-row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.slider-row label{font-size:.8rem;color:var(--lilac);display:flex;justify-content:space-between}
+input[type=range]{width:100%;accent-color:var(--violet);height:4px;
+  -webkit-appearance:none;appearance:none;background:rgba(196,181,253,.2);border-radius:4px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;
+  background:var(--violet);border-radius:50%;cursor:pointer;border:3px solid var(--white)}
+
+/* ROTATE BUTTONS */
+.rotate-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.rot-btn{padding:12px 4px;border-radius:12px;background:var(--glass);
+  border:1px solid rgba(196,181,253,.25);color:var(--white);font-size:.8rem;
+  cursor:pointer;text-align:center;font-weight:600}
+.rot-btn:active{background:rgba(124,58,237,.4)}
+
+/* FLIP BUTTONS */
+.flip-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+
+/* FILTER CHIPS */
+.filter-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.filter-chip{aspect-ratio:1;border-radius:12px;cursor:pointer;
+  border:2px solid transparent;display:flex;align-items:flex-end;
+  padding:4px;font-size:.6rem;color:var(--white);font-weight:700;
+  text-shadow:0 1px 3px #000}
+.filter-chip.selected{border-color:var(--white)}
+
+/* COLLAGE */
+.collage-layouts{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.layout-opt{width:64px;height:64px;border-radius:10px;
+  border:2px solid rgba(196,181,253,.3);background:var(--glass);
+  cursor:pointer;display:flex;flex-direction:column;gap:3px;padding:6px}
+.layout-opt.sel{border-color:var(--violet)}
+.layout-opt div{background:rgba(196,181,253,.4);border-radius:3px;flex:1}
+.layout-opt.two{flex-direction:row}
+.layout-opt.four{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+
+/* TEXT CONTROLS */
+.text-controls{display:flex;flex-direction:column;gap:10px}
+.text-controls textarea{width:100%;background:var(--glass);border:1px solid rgba(196,181,253,.3);
+  border-radius:10px;padding:10px;color:var(--white);font-size:1rem;resize:none;height:70px;outline:none}
+.row-wrap{display:flex;gap:8px;flex-wrap:wrap}
+.mini-btn{flex:1;min-width:70px;padding:10px 6px;border-radius:12px;
+  background:var(--glass);border:1px solid rgba(196,181,253,.25);
+  color:var(--white);font-size:.8rem;cursor:pointer;text-align:center}
+.mini-btn:active{background:rgba(124,58,237,.4)}
+.color-row{display:flex;gap:8px;flex-wrap:wrap}
+.color-dot{width:32px;height:32px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;flex-shrink:0}
+.color-dot.sel{border-color:var(--white)}
+
+/* BORDER */
+.border-colors{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+
+/* EXPORT */
+.export-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.export-btn{padding:16px 8px;border-radius:14px;border:1px solid rgba(196,181,253,.3);
+  background:var(--glass);color:var(--white);font-size:.85rem;font-weight:700;cursor:pointer;text-align:center}
+.export-btn:active{background:var(--violet)}
+.export-btn .fmt{font-size:1.4rem;display:block;margin-bottom:4px}
+
+/* GALLERY */
+#gallery-screen{display:none;flex-direction:column;min-height:100dvh;
+  background:linear-gradient(160deg,var(--ink),var(--plum))}
+.gallery-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}
+.gallery-item{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1;background:var(--glass);cursor:pointer}
+.gallery-item img{width:100%;height:100%;object-fit:cover}
+.gallery-item .del-btn{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);
+  border:none;border-radius:50%;width:28px;height:28px;color:#fff;font-size:.9rem;
+  cursor:pointer;display:flex;align-items:center;justify-content:center}
+.empty-gallery{text-align:center;color:var(--lilac);padding:60px 20px;opacity:.6;grid-column:1/-1}
+.empty-gallery .big{font-size:3rem}
+
+/* TOAST */
+#toast{position:fixed;bottom:calc(var(--safe-b) + 80px);left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--violet);color:var(--white);padding:10px 22px;
+  border-radius:20px;font-size:.85rem;font-weight:600;
+  opacity:0;transition:all .3s;z-index:200;white-space:nowrap;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* INSTALL */
+#install-banner{display:none;position:fixed;bottom:calc(var(--safe-b)+16px);
+  left:16px;right:16px;background:var(--violet);border-radius:16px;padding:14px 16px;
+  flex-direction:row;align-items:center;gap:12px;z-index:50;
+  box-shadow:0 8px 32px rgba(124,58,237,.5)}
+#install-banner p{flex:1;font-size:.85rem;font-weight:600}
+#install-banner button{background:var(--white);color:var(--violet);border:none;
+  border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer}
+#install-close{background:none;border:none;color:var(--white);font-size:1.2rem;cursor:pointer}
+.safe-pad{height:calc(var(--safe-b)+12px)}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div style="text-align:center">
+    <div style="font-size:3.5rem;margin-bottom:8px">🎨</div>
+    <h1>AcasPhoto</h1>
+    <p>Editor de fotos, collage y más</p>
+  </div>
+  <div class="splash-grid">
+    <button class="splash-btn" onclick="startEditor()"><span class="icon">✏️</span>Editar foto</button>
+    <button class="splash-btn" onclick="startCollage()"><span class="icon">🖼️</span>Collage</button>
+    <button class="splash-btn" onclick="showGallery()"><span class="icon">🗂️</span>Mis creaciones</button>
+    <button class="splash-btn" onclick="startEditor()"><span class="icon">📝</span>Foto + texto</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="top-bar">
+    <button class="icon-btn" onclick="goHome()">🏠</button>
+    <h2 id="screen-title">Editor</h2>
+    <button class="icon-btn" onclick="saveToGallery()">💾</button>
+  </div>
+
+  <div id="canvas-wrap">
+    <div id="canvas-placeholder"><span class="big">🖼️</span><span>Toca para cargar una foto</span></div>
+    <canvas id="main-canvas" style="display:none"></canvas>
+    <!-- Crop UI -->
+    <div id="crop-overlay">
+      <div id="crop-box">
+        <div class="crop-handle tl" data-h="tl"></div>
+        <div class="crop-handle tr" data-h="tr"></div>
+        <div class="crop-handle bl" data-h="bl"></div>
+        <div class="crop-handle br" data-h="br"></div>
+      </div>
+      <div id="crop-confirm">
+        <button id="btn-crop-ok" onclick="applyCrop()">✅ Recortar</button>
+        <button id="btn-crop-cancel" onclick="cancelCrop()">✕ Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="load-row" style="padding:0 16px 10px;display:flex;gap:10px">
+    <button class="mini-btn" style="flex:1;padding:14px;background:var(--violet);border-color:var(--violet);font-size:.95rem"
+      onclick="document.getElementById('file-input').click()">📷 Cargar foto</button>
+  </div>
+  <input type="file" id="file-input" accept="image/*" style="display:none" multiple>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('ajustes')">🔆 Ajustes</button>
+    <button class="tab-btn" onclick="switchTab('recortar')">✂️ Recortar</button>
+    <button class="tab-btn" onclick="switchTab('filtros')">🎨 Filtros</button>
+    <button class="tab-btn" onclick="switchTab('borde')">⬜ Borde</button>
+    <button class="tab-btn" onclick="switchTab('texto')">✍️ Texto</button>
+    <button class="tab-btn" onclick="switchTab('collage')">🖼️ Collage</button>
+    <button class="tab-btn" onclick="switchTab('exportar')">⬇️ Guardar</button>
+  </div>
+
+  <!-- PANEL AJUSTES -->
+  <div class="panel active" id="panel-ajustes">
+    <div class="slider-row">
+      <label>☀️ Brillo <span id="val-bright">0</span></label>
+      <input type="range" id="sl-bright" min="-100" max="100" value="0" oninput="applyFilters()">
+    </div>
+    <div class="slider-row">
+      <label>◑ Contraste <span id="val-contrast">0</span></label>
+      <input type="range" id="sl-contrast" min="-100" max="100" value="0" oninput="applyFilters()">
+    </div>
+    <div class="slider-row">
+      <label>🎨 Saturación <span id="val-sat">0</span></label>
+      <input type="range" id="sl-sat" min="-100" max="100" value="0" oninput="applyFilters()">
+    </div>
+    <div class="slider-row">
+      <label>🔍 Nitidez / Enfoque <span id="val-sharp">0</span></label>
+      <input type="range" id="sl-sharp" min="0" max="10" value="0" oninput="applyFilters()">
+    </div>
+    <div class="slider-row">
+      <label>🌡️ Calidez <span id="val-warm">0</span></label>
+      <input type="range" id="sl-warm" min="-100" max="100" value="0" oninput="applyFilters()">
+    </div>
+    <div class="slider-row">
+      <label>✨ Claridad (microcontraste) <span id="val-clarity">0</span></label>
+      <input type="range" id="sl-clarity" min="0" max="10" value="0" oninput="applyFilters()">
+    </div>
+    <button class="mini-btn" style="width:100%;margin-top:4px" onclick="resetAjustes()">↺ Restablecer todo</button>
+  </div>
+
+  <!-- PANEL RECORTAR/GIRAR -->
+  <div class="panel" id="panel-recortar">
+    <p style="font-size:.8rem;color:var(--lilac);margin-bottom:10px">Girar imagen</p>
+    <div class="rotate-row">
+      <button class="rot-btn" onclick="rotateImg(-90)">↺ 90°</button>
+      <button class="rot-btn" onclick="rotateImg(90)">↻ 90°</button>
+      <button class="rot-btn" onclick="rotateImg(180)">↕ 180°</button>
+      <button class="rot-btn" onclick="rotateImg(0,'reset')">↺ Reset</button>
+    </div>
+    <p style="font-size:.8rem;color:var(--lilac);margin-bottom:8px">Voltear imagen</p>
+    <div class="flip-row" style="margin-bottom:14px">
+      <button class="rot-btn" onclick="flipImg('h')">⇄ Horizontal</button>
+      <button class="rot-btn" onclick="flipImg('v')">⇅ Vertical</button>
+    </div>
+    <div class="slider-row">
+      <label>↗️ Ángulo libre <span id="val-angle">0°</span></label>
+      <input type="range" id="sl-angle" min="-45" max="45" value="0" oninput="applyFilters()">
+    </div>
+    <p style="font-size:.8rem;color:var(--lilac);margin-bottom:10px">Recortar imagen</p>
+    <button class="mini-btn" style="width:100%;padding:14px;background:var(--violet);border-color:var(--violet)"
+      onclick="startCrop()">✂️ Activar recorte</button>
+    <p style="font-size:.75rem;color:var(--lilac);margin-top:8px;opacity:.7">
+      Arrastra las esquinas del recuadro para ajustar el área
+    </p>
+  </div>
+
+  <!-- PANEL FILTROS -->
+  <div class="panel" id="panel-filtros">
+    <p style="font-size:.8rem;color:var(--lilac);margin-bottom:10px">Filtro de color transparente</p>
+    <div class="filter-grid" id="filter-grid"></div>
+    <div class="slider-row">
+      <label>Intensidad <span id="val-fop">50%</span></label>
+      <input type="range" id="sl-fop" min="0" max="100" value="50" oninput="applyFilters()">
+    </div>
+  </div>
+
+  <!-- PANEL BORDE -->
+  <div class="panel" id="panel-borde">
+    <div class="slider-row">
+      <label>Grosor <span id="val-bw">0px</span></label>
+      <input type="range" id="sl-bw" min="0" max="80" value="0" oninput="applyFilters()">
+    </div>
+    <div class="slider-row">
+      <label>Redondez <span id="val-br">0px</span></label>
+      <input type="range" id="sl-br" min="0" max="120" value="0" oninput="applyFilters()">
+    </div>
+    <p style="font-size:.8rem;color:var(--lilac);margin-bottom:8px">Color del borde</p>
+    <div class="border-colors" id="border-colors"></div>
+    <div class="slider-row" style="margin-top:8px">
+      <label>Color personalizado</label>
+      <input type="color" id="border-custom" value="#ffffff"
+        style="width:100%;height:40px;border:none;border-radius:10px;cursor:pointer;background:none"
+        oninput="borderColor=this.value;applyFilters()">
+    </div>
+  </div>
+
+  <!-- PANEL TEXTO -->
+  <div class="panel" id="panel-texto">
+    <div class="text-controls">
+      <textarea id="text-input" placeholder="Escribe tu frase aquí..."></textarea>
+      <div class="row-wrap">
+        <button class="mini-btn" onclick="setFont('normal')">Normal</button>
+        <button class="mini-btn" onclick="setFont('bold')">Negrita</button>
+        <button class="mini-btn" onclick="setFont('italic')">Cursiva</button>
+      </div>
+      <div class="slider-row">
+        <label>Tamaño <span id="val-fs">40px</span></label>
+        <input type="range" id="sl-fs" min="12" max="120" value="40" oninput="applyFilters()">
+      </div>
+      <div class="slider-row">
+        <label>Posición horizontal <span id="val-tx">50%</span></label>
+        <input type="range" id="sl-tx" min="0" max="100" value="50" oninput="applyFilters()">
+      </div>
+      <div class="slider-row">
+        <label>Posición vertical <span id="val-ty">80%</span></label>
+        <input type="range" id="sl-ty" min="0" max="100" value="80" oninput="applyFilters()">
+      </div>
+      <p style="font-size:.8rem;color:var(--lilac)">Color del texto</p>
+      <div class="color-row" id="text-colors"></div>
+    </div>
+  </div>
+
+  <!-- PANEL COLLAGE -->
+  <div class="panel" id="panel-collage">
+    <p style="font-size:.8rem;color:var(--lilac);margin-bottom:10px">Distribución</p>
+    <div class="collage-layouts">
+      <div class="layout-opt sel" onclick="setLayout(1,this)"><div></div></div>
+      <div class="layout-opt two" onclick="setLayout(2,this)"><div></div><div></div></div>
+      <div class="layout-opt" onclick="setLayout(3,this)" style="display:flex;flex-direction:column;gap:3px;padding:6px">
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:3px;flex:1"><div style="flex:1"></div><div style="flex:1"></div></div>
+      </div>
+      <div class="layout-opt four" onclick="setLayout(4,this)">
+        <div></div><div></div><div></div><div></div>
+      </div>
+    </div>
+    <button class="mini-btn" style="width:100%;padding:14px;margin-top:4px"
+      onclick="document.getElementById('file-input').click()">➕ Agregar foto al collage</button>
+    <p id="collage-count" style="font-size:.8rem;color:var(--lilac);margin-top:10px;text-align:center">0 fotos cargadas</p>
+    <div class="slider-row" style="margin-top:10px">
+      <label>Espacio entre fotos <span id="val-gap">4px</span></label>
+      <input type="range" id="sl-gap" min="0" max="30" value="4" oninput="renderCollage()">
+    </div>
+    <button class="mini-btn" style="width:100%;padding:12px;margin-top:4px;background:var(--violet);border-color:var(--violet)"
+      onclick="renderCollage()">🔄 Actualizar collage</button>
+  </div>
+
+  <!-- PANEL EXPORTAR -->
+  <div class="panel" id="panel-exportar">
+    <p style="font-size:.8rem;color:var(--lilac);margin-bottom:14px">Elige el formato para descargar</p>
+    <div class="export-grid">
+      <button class="export-btn" onclick="exportImg('png')"><span class="fmt">🖼️</span>PNG</button>
+      <button class="export-btn" onclick="exportImg('jpg')"><span class="fmt">📷</span>JPG</button>
+      <button class="export-btn" onclick="exportImg('pdf')"><span class="fmt">📄</span>PDF</button>
+    </div>
+    <div style="margin-top:16px">
+      <p style="font-size:.8rem;color:var(--lilac);margin-bottom:10px">O guarda en Mis Creaciones</p>
+      <button class="mini-btn" style="width:100%;padding:14px" onclick="saveToGallery()">🗂️ Guardar en mis creaciones</button>
+    </div>
+  </div>
+
+  <div class="safe-pad"></div>
+</div>
+
+<!-- GALLERY -->
+<div id="gallery-screen">
+  <div class="top-bar">
+    <button class="icon-btn" onclick="goHome()">🏠</button>
+    <h2>Mis Creaciones</h2>
+    <button class="icon-btn" onclick="clearGallery()">🗑️</button>
+  </div>
+  <div id="gallery-grid" class="gallery-grid"></div>
+  <div class="safe-pad"></div>
+</div>
+
+<div id="toast"></div>
+<div id="install-banner">
+  <p>📲 Instala AcasPhoto en tu pantalla de inicio</p>
+  <button onclick="installApp()">Instalar</button>
+  <button id="install-close" onclick="document.getElementById('install-banner').style.display='none'">✕</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+/* ══ STATE ══════════════════════════════════════════ */
+let sourceImg   = null;   // imagen original sin transformar
+let workingImg  = null;   // imagen tras girar/recortar (base para filtros)
+let collageImgs = [];
+let collageLayout = 1;
+let currentFilter = 'none';
+let borderColor   = '#ffffff';
+let fontStyle     = 'normal';
+let rotation      = 0;    // acumulado en grados
+let flipH         = false;
+let flipV         = false;
+let deferredPrompt = null;
+let mode = 'editor';
+
+// Crop state
+let cropActive = false;
+let cropBox    = { x:0, y:0, w:0, h:0 };
+let cropDrag   = null; // { type:'move'|'tl'|'tr'|'bl'|'br', startX, startY, origBox }
+
+const canvas = document.getElementById('main-canvas');
+const ctx    = canvas.getContext('2d', { willReadFrequently: true });
+
+/* ══ FILTROS ════════════════════════════════════════ */
+const COLOR_FILTERS = [
+  { name:'Ninguno', color:'transparent' },
+  { name:'Rosa',    color:'#ff6eb4' },
+  { name:'Violeta', color:'#9b5de5' },
+  { name:'Azul',    color:'#0096c7' },
+  { name:'Dorado',  color:'#f4a261' },
+  { name:'Verde',   color:'#52b788' },
+  { name:'Rojo',    color:'#e63946' },
+  { name:'B&N',     color:'#888888' },
+];
+const BORDER_PRESETS = ['#ffffff','#000000','#ffd700','#ff6eb4','#9b5de5','#52b788','#f4a261','transparent'];
+const TEXT_COLORS    = ['#ffffff','#000000','#ffd700','#ff6eb4','#9b5de5','#52b788','#f4a261','#ff0000'];
+
+/* ══ INIT ═══════════════════════════════════════════ */
+window.addEventListener('load', () => {
+  buildFilterGrid(); buildColorPickers(); buildBorderColors(); registerSW();
+  document.getElementById('text-input').addEventListener('input', applyFilters);
+});
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  document.getElementById('install-banner').style.display = 'flex';
+});
+function registerSW() {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+function installApp() {
+  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(()=>{ document.getElementById('install-banner').style.display='none'; deferredPrompt=null; }); }
+  else toast('En Safari: comparte → "Añadir a inicio"');
+}
+
+/* ══ NAVEGACIÓN ═════════════════════════════════════ */
+function goHome() {
+  cancelCrop();
+  document.getElementById('splash').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('gallery-screen').style.display = 'none';
+}
+function startEditor() {
+  mode = 'editor';
+  document.getElementById('splash').style.display = 'none';
+  document.getElementById('gallery-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('screen-title').textContent = 'Editor';
+  switchTab('ajustes');
+}
+function startCollage() {
+  mode = 'collage'; collageImgs = [];
+  document.getElementById('splash').style.display = 'none';
+  document.getElementById('gallery-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('screen-title').textContent = 'Collage';
+  switchTab('collage'); updateCollageCount();
+}
+function showGallery() {
+  document.getElementById('splash').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  const gs = document.getElementById('gallery-screen');
+  gs.style.display = 'flex'; gs.style.flexDirection = 'column';
+  renderGallery();
+}
+function switchTab(id) {
+  const tabs = ['ajustes','recortar','filtros','borde','texto','collage','exportar'];
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  document.querySelectorAll('.tab-btn')[tabs.indexOf(id)].classList.add('active');
+}
+
+/* ══ FILE INPUT ═════════════════════════════════════ */
+document.getElementById('file-input').addEventListener('change', function(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  if (mode === 'collage') {
+    let done = 0;
+    files.forEach(f => {
+      const img = new Image();
+      img.onload = () => { collageImgs.push(img); done++; if (done===files.length) { updateCollageCount(); renderCollage(); } };
+      img.src = URL.createObjectURL(f);
+    });
+  } else {
+    const img = new Image();
+    img.onload = () => {
+      sourceImg = img; workingImg = img;
+      rotation = 0; flipH = false; flipV = false;
+      document.getElementById('sl-angle').value = 0;
+      setupCanvas(img.width, img.height);
+      applyFilters(); showCanvas();
+    };
+    img.src = URL.createObjectURL(files[0]);
+  }
+  this.value = '';
+});
+
+function showCanvas() {
+  document.getElementById('canvas-placeholder').style.display = 'none';
+  canvas.style.display = 'block';
+  document.getElementById('load-row').style.display = 'none';
+}
+function setupCanvas(w, h) {
+  const maxW = window.innerWidth - 24;
+  const maxH = window.innerHeight * 0.54;
+  const ratio = Math.min(maxW/w, maxH/h, 1);
+  canvas.width  = Math.round(w * ratio);
+  canvas.height = Math.round(h * ratio);
+  canvas._srcW = w; canvas._srcH = h; canvas._ratio = ratio;
+}
+
+/* ══ ROTATE / FLIP ══════════════════════════════════ */
+function rotateImg(deg, mode) {
+  if (!workingImg) { toast('Carga una foto primero'); return; }
+  if (mode === 'reset') { rotation = 0; document.getElementById('sl-angle').value = 0; }
+  else rotation = (rotation + deg + 360) % 360;
+  bakeTransform();
+}
+function flipImg(axis) {
+  if (!workingImg) { toast('Carga una foto primero'); return; }
+  if (axis === 'h') flipH = !flipH;
+  else flipV = !flipV;
+  bakeTransform();
+}
+
+// Aplica giro/volteo al workingImg y lo convierte en nueva base
+function bakeTransform() {
+  const freeAngle = +document.getElementById('sl-angle').value;
+  const totalDeg  = rotation + freeAngle;
+  const rad = totalDeg * Math.PI / 180;
+  const sw = sourceImg.width, sh = sourceImg.height;
+
+  // nuevo tamaño del canvas rotado
+  const cos = Math.abs(Math.cos(rad)), sin = Math.abs(Math.sin(rad));
+  const nw = Math.round(sw*cos + sh*sin);
+  const nh = Math.round(sw*sin + sh*cos);
+
+  const tmp = document.createElement('canvas');
+  tmp.width = nw; tmp.height = nh;
+  const tc = tmp.getContext('2d');
+  tc.translate(nw/2, nh/2);
+  tc.rotate(rad);
+  tc.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+  tc.drawImage(sourceImg, -sw/2, -sh/2);
+
+  const result = new Image();
+  result.onload = () => { workingImg = result; setupCanvas(nw, nh); applyFilters(); showCanvas(); };
+  result.src = tmp.toDataURL();
+}
+
+/* ══ CROP ════════════════════════════════════════════ */
+function startCrop() {
+  if (!workingImg) { toast('Carga una foto primero'); return; }
+  cropActive = true;
+  const rect = canvas.getBoundingClientRect();
+  // init crop box at 20% inset
+  const pad = 0.2;
+  cropBox = {
+    x: rect.left + rect.width * pad,
+    y: rect.top  + rect.height * pad,
+    w: rect.width  * (1 - pad*2),
+    h: rect.height * (1 - pad*2)
+  };
+  const overlay = document.getElementById('crop-overlay');
+  overlay.style.display = 'flex';
+  updateCropBoxUI();
+  setupCropEvents();
+}
+
+function updateCropBoxUI() {
+  const wrap = document.getElementById('canvas-wrap').getBoundingClientRect();
+  const box  = document.getElementById('crop-box');
+  box.style.left   = (cropBox.x - wrap.left) + 'px';
+  box.style.top    = (cropBox.y - wrap.top)  + 'px';
+  box.style.width  = cropBox.w + 'px';
+  box.style.height = cropBox.h + 'px';
+}
+
+function setupCropEvents() {
+  const box = document.getElementById('crop-box');
+  // move
+  box.addEventListener('pointerdown', e => {
+    if (e.target.classList.contains('crop-handle')) return;
+    cropDrag = { type:'move', startX:e.clientX, startY:e.clientY, origBox:{...cropBox} };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  });
+  box.addEventListener('pointermove', doCropDrag);
+  box.addEventListener('pointerup', () => cropDrag = null);
+  // handles
+  document.querySelectorAll('.crop-handle').forEach(h => {
+    h.addEventListener('pointerdown', e => {
+      cropDrag = { type: e.target.dataset.h, startX:e.clientX, startY:e.clientY, origBox:{...cropBox} };
+      e.target.setPointerCapture(e.pointerId);
+      e.stopPropagation();
+    });
+    h.addEventListener('pointermove', doCropDrag);
+    h.addEventListener('pointerup', () => cropDrag = null);
+  });
+}
+
+function doCropDrag(e) {
+  if (!cropDrag) return;
+  const dx = e.clientX - cropDrag.startX;
+  const dy = e.clientY - cropDrag.startY;
+  const ob = cropDrag.origBox;
+  const canRect = canvas.getBoundingClientRect();
+  const minSize = 40;
+
+  if (cropDrag.type === 'move') {
+    cropBox.x = Math.max(canRect.left, Math.min(canRect.right  - ob.w, ob.x + dx));
+    cropBox.y = Math.max(canRect.top,  Math.min(canRect.bottom - ob.h, ob.y + dy));
+  } else {
+    let nx = ob.x, ny = ob.y, nw = ob.w, nh = ob.h;
+    if (cropDrag.type.includes('l')) { nx = ob.x+dx; nw = ob.w-dx; }
+    if (cropDrag.type.includes('r')) { nw = ob.w+dx; }
+    if (cropDrag.type.includes('t')) { ny = ob.y+dy; nh = ob.h-dy; }
+    if (cropDrag.type.includes('b')) { nh = ob.h+dy; }
+    if (nw < minSize || nh < minSize) return;
+    cropBox = { x:nx, y:ny, w:nw, h:nh };
+  }
+  updateCropBoxUI();
+}
+
+function applyCrop() {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const cx = (cropBox.x - rect.left) * scaleX;
+  const cy = (cropBox.y - rect.top)  * scaleY;
+  const cw = cropBox.w * scaleX;
+  const ch = cropBox.h * scaleY;
+
+  // sample from workingImg scaled to canvas dims
+  const tmp = document.createElement('canvas');
+  tmp.width = cw; tmp.height = ch;
+  const tc = tmp.getContext('2d');
+  tc.drawImage(workingImg,
+    cx / canvas._ratio, cy / canvas._ratio, cw / canvas._ratio, ch / canvas._ratio,
+    0, 0, cw, ch);
+
+  const result = new Image();
+  result.onload = () => {
+    workingImg = result; sourceImg = result;
+    rotation = 0; flipH = false; flipV = false;
+    setupCanvas(result.width, result.height);
+    cancelCrop(); applyFilters();
+    toast('✅ Imagen recortada');
+  };
+  result.src = tmp.toDataURL();
+}
+
+function cancelCrop() {
+  cropActive = false; cropDrag = null;
+  document.getElementById('crop-overlay').style.display = 'none';
+}
+
+/* ══ RENDER ══════════════════════════════════════════ */
+function applyFilters() {
+  if (mode === 'collage') { renderCollage(); return; }
+  if (!workingImg) return;
+
+  const bright   = +document.getElementById('sl-bright').value;
+  const contrast = +document.getElementById('sl-contrast').value;
+  const sat      = +document.getElementById('sl-sat').value;
+  const sharp    = +document.getElementById('sl-sharp').value;
+  const warm     = +document.getElementById('sl-warm').value;
+  const clarity  = +document.getElementById('sl-clarity').value;
+  const fop      = +document.getElementById('sl-fop').value / 100;
+  const bw       = +document.getElementById('sl-bw').value;
+  const br       = +document.getElementById('sl-br').value;
+  const fs       = +document.getElementById('sl-fs').value;
+  const tx       = +document.getElementById('sl-tx').value / 100;
+  const ty       = +document.getElementById('sl-ty').value / 100;
+  const angle    = +document.getElementById('sl-angle').value;
+
+  document.getElementById('val-bright').textContent   = bright;
+  document.getElementById('val-contrast').textContent = contrast;
+  document.getElementById('val-sat').textContent      = sat;
+  document.getElementById('val-sharp').textContent    = sharp;
+  document.getElementById('val-warm').textContent     = warm;
+  document.getElementById('val-clarity').textContent  = clarity;
+  document.getElementById('val-fop').textContent      = Math.round(fop*100)+'%';
+  document.getElementById('val-bw').textContent       = bw+'px';
+  document.getElementById('val-br').textContent       = br+'px';
+  document.getElementById('val-fs').textContent       = fs+'px';
+  document.getElementById('val-tx').textContent       = Math.round(tx*100)+'%';
+  document.getElementById('val-ty').textContent       = Math.round(ty*100)+'%';
+  document.getElementById('val-angle').textContent    = angle+'°';
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // border bg
+  if (bw > 0 && borderColor !== 'transparent') {
+    ctx.fillStyle = borderColor;
+    const r = Math.min(br, canvas.width/2, canvas.height/2);
+    roundRect(ctx, 0, 0, canvas.width, canvas.height, r); ctx.fill();
+  }
+
+  ctx.save();
+  if (br > 0) {
+    const r = Math.min(br, (canvas.width-bw*2)/2, (canvas.height-bw*2)/2);
+    roundRect(ctx, bw, bw, canvas.width-bw*2, canvas.height-bw*2, r); ctx.clip();
+  }
+
+  // free angle rotation
+  const rad = angle * Math.PI / 180;
+  const cx2 = canvas.width/2, cy2 = canvas.height/2;
+  ctx.translate(cx2, cy2); ctx.rotate(rad); ctx.translate(-cx2, -cy2);
+
+  // draw with CSS filter (brillo, contraste, saturación, calidez)
+  ctx.filter = buildCSSFilter(bright, contrast, sat, warm);
+  ctx.drawImage(workingImg, bw, bw, canvas.width-bw*2, canvas.height-bw*2);
+  ctx.filter = 'none';
+
+  ctx.restore();
+
+  // B&W desaturate via pixel op
+  if (currentFilter === 'B&N') {
+    const id = ctx.getImageData(0,0,canvas.width,canvas.height);
+    const d = id.data;
+    for (let i=0;i<d.length;i+=4){ const g=d[i]*.299+d[i+1]*.587+d[i+2]*.114; d[i]=d[i+1]=d[i+2]=g; }
+    ctx.putImageData(id,0,0);
+  }
+
+  // Nitidez (unsharp mask via convolución)
+  if (sharp > 0) {
+    applySharpness(sharp);
+  }
+
+  // Claridad (microcontraste local)
+  if (clarity > 0) {
+    applyClarity(clarity);
+  }
+
+  // Color filter overlay
+  const cf = COLOR_FILTERS.find(f=>f.name===currentFilter);
+  if (cf && cf.color !== 'transparent' && currentFilter !== 'B&N' && fop > 0) {
+    ctx.globalAlpha = Math.min(fop * 0.7, 0.85);
+    ctx.fillStyle = cf.color;
+    ctx.fillRect(bw, bw, canvas.width-bw*2, canvas.height-bw*2);
+    ctx.globalAlpha = 1;
+  }
+
+  // Texto
+  const txt = document.getElementById('text-input').value;
+  if (txt) {
+    const scaledFs = Math.round(fs * (canvas._ratio||1));
+    ctx.font = `${fontStyle==='italic'?'italic ':''  }${fontStyle==='bold'?'bold ':'' }${scaledFs}px 'Segoe UI',sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const selColor = document.querySelector('.color-dot.sel');
+    ctx.fillStyle = selColor ? selColor.dataset.color : '#ffffff';
+    ctx.shadowColor='rgba(0,0,0,0.7)'; ctx.shadowBlur=6;
+    wrapText(ctx, txt, canvas.width*tx, canvas.height*ty, canvas.width-40, scaledFs*1.3);
+    ctx.shadowBlur=0;
+  }
+}
+
+/* ── NITIDEZ real (unsharp mask) ────────────────────── */
+function applySharpness(amount) {
+  const w = canvas.width, h = canvas.height;
+  const id = ctx.getImageData(0,0,w,h);
+  const src = new Uint8ClampedArray(id.data);
+  const d   = id.data;
+  const k = amount * 0.3; // factor
+
+  for (let y=1;y<h-1;y++) {
+    for (let x=1;x<w-1;x++) {
+      const i = (y*w+x)*4;
+      for (let c=0;c<3;c++) {
+        // Laplacian kernel: center*5 - neighbors*1
+        const lap =
+          5*src[i+c]
+          - src[((y-1)*w+x)*4+c]
+          - src[((y+1)*w+x)*4+c]
+          - src[(y*w+(x-1))*4+c]
+          - src[(y*w+(x+1))*4+c];
+        d[i+c] = Math.min(255, Math.max(0, src[i+c] + lap*k));
+      }
+    }
+  }
+  ctx.putImageData(id,0,0);
+}
+
+/* ── CLARIDAD (microcontraste) ───────────────────────── */
+function applyClarity(amount) {
+  const w = canvas.width, h = canvas.height;
+  const id  = ctx.getImageData(0,0,w,h);
+  const src = new Uint8ClampedArray(id.data);
+  const d   = id.data;
+  const k = amount * 0.15;
+  const r = 3; // radio del blur local (box blur simple)
+
+  for (let y=r;y<h-r;y++) {
+    for (let x=r;x<w-r;x++) {
+      const i = (y*w+x)*4;
+      for (let c=0;c<3;c++) {
+        // promedio de vecinos (blur local)
+        let sum=0, cnt=0;
+        for (let dy=-r;dy<=r;dy++) for (let dx=-r;dx<=r;dx++) {
+          sum += src[((y+dy)*w+(x+dx))*4+c]; cnt++;
+        }
+        const blurred = sum/cnt;
+        // realzar diferencia entre pixel y su blur
+        d[i+c] = Math.min(255,Math.max(0, src[i+c] + (src[i+c]-blurred)*k));
+      }
+    }
+  }
+  ctx.putImageData(id,0,0);
+}
+
+function buildCSSFilter(bright, contrast, sat, warm) {
+  const b = 1 + bright/100;
+  const c = 1 + contrast/100;
+  const s = 1 + sat/100;
+  const sepia = warm>0 ? warm/200 : 0;
+  const hue   = warm<0 ? warm/3   : 0;
+  return `brightness(${b}) contrast(${c}) saturate(${s}) sepia(${sepia}) hue-rotate(${hue}deg)`;
+}
+
+function wrapText(ctx, text, x, y, maxW, lineH) {
+  const words = text.split(' ');
+  let line='', lines=[];
+  for (let w of words) {
+    const test = line+w+' ';
+    if (ctx.measureText(test).width>maxW && line) { lines.push(line.trim()); line=w+' '; }
+    else line=test;
+  }
+  if (line) lines.push(line.trim());
+  const startY = y-((lines.length-1)*lineH)/2;
+  lines.forEach((l,i) => ctx.fillText(l, x, startY+i*lineH));
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+
+/* ══ COLLAGE ════════════════════════════════════════ */
+function setLayout(n,el) {
+  collageLayout=n;
+  document.querySelectorAll('.layout-opt').forEach(o=>o.classList.remove('sel'));
+  el.classList.add('sel'); renderCollage();
+}
+function updateCollageCount() {
+  document.getElementById('collage-count').textContent =
+    collageImgs.length+' foto'+(collageImgs.length!==1?'s':'')+' cargada'+(collageImgs.length!==1?'s':'');
+}
+function renderCollage() {
+  if (!collageImgs.length) return;
+  const gap  = +document.getElementById('sl-gap').value;
+  document.getElementById('val-gap').textContent = gap+'px';
+  const size = Math.min(window.innerWidth-24, Math.round(window.innerHeight*.52));
+  canvas.width=size; canvas.height=size; canvas._ratio=1;
+  ctx.fillStyle='#1a0533'; ctx.fillRect(0,0,size,size);
+
+  const draw=(img,x,y,w,h)=>{
+    const aspect=img.width/img.height;
+    let sw,sh,sx,sy;
+    if(w/h>aspect){sw=img.width;sh=sw/(w/h);sx=0;sy=(img.height-sh)/2;}
+    else{sh=img.height;sw=sh*(w/h);sx=(img.width-sw)/2;sy=0;}
+    ctx.drawImage(img,sx,sy,sw,sh,x,y,w,h);
+  };
+  const imgs=collageImgs;
+  if(collageLayout===1||imgs.length===1){ draw(imgs[0],0,0,size,size); }
+  else if(collageLayout===2||imgs.length===2){
+    const w=(size-gap)/2;
+    draw(imgs[0],0,0,w,size); draw(imgs[1]||imgs[0],w+gap,0,w,size);
+  } else if(collageLayout===3||imgs.length===3){
+    const h1=(size-gap)/2; const w2=(size-gap)/2;
+    draw(imgs[0],0,0,size,h1);
+    draw(imgs[1]||imgs[0],0,h1+gap,w2,h1);
+    draw(imgs[2]||imgs[0],w2+gap,h1+gap,w2,h1);
+  } else {
+    const w=(size-gap)/2; const h=(size-gap)/2;
+    draw(imgs[0],0,0,w,h); draw(imgs[1]||imgs[0],w+gap,0,w,h);
+    draw(imgs[2]||imgs[0],0,h+gap,w,h); draw(imgs[3]||imgs[0],w+gap,h+gap,w,h);
+  }
+  showCanvas(); updateCollageCount();
+}
+
+/* ══ BUILDERS ════════════════════════════════════════ */
+function buildFilterGrid() {
+  const grid = document.getElementById('filter-grid');
+  COLOR_FILTERS.forEach(f=>{
+    const d=document.createElement('div');
+    d.className='filter-chip'+(f.name==='Ninguno'?' selected':'');
+    d.textContent=f.name;
+    d.style.background=f.color==='transparent'?'#333':
+      f.name==='B&N'?'linear-gradient(135deg,#888,#333)':
+      `linear-gradient(135deg,${f.color}99,${f.color})`;
+    d.onclick=()=>{
+      document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('selected'));
+      d.classList.add('selected'); currentFilter=f.name; applyFilters();
+    };
+    grid.appendChild(d);
+  });
+}
+function buildColorPickers() {
+  const row=document.getElementById('text-colors');
+  TEXT_COLORS.forEach((c,i)=>{
+    const d=document.createElement('div');
+    d.className='color-dot'+(i===0?' sel':'');
+    d.style.background=c; d.dataset.color=c;
+    d.onclick=()=>{ document.querySelectorAll('.color-dot').forEach(x=>x.classList.remove('sel')); d.classList.add('sel'); applyFilters(); };
+    row.appendChild(d);
+  });
+}
+function buildBorderColors() {
+  const row=document.getElementById('border-colors');
+  BORDER_PRESETS.forEach((c,i)=>{
+    const d=document.createElement('div');
+    d.className='color-dot'+(i===0?' sel':'');
+    d.style.background=c==='transparent'?'linear-gradient(135deg,#ccc 50%,#888 50%)':c;
+    d.dataset.color=c;
+    d.onclick=()=>{ document.querySelectorAll('#border-colors .color-dot').forEach(x=>x.classList.remove('sel')); d.classList.add('sel'); borderColor=c; applyFilters(); };
+    row.appendChild(d);
+  });
+}
+
+/* ══ CONTROLES ════════════════════════════════════════ */
+function setFont(s){ fontStyle=s; applyFilters(); }
+function resetAjustes(){
+  ['sl-bright','sl-contrast','sl-sat','sl-warm','sl-sharp','sl-clarity'].forEach(id=>document.getElementById(id).value=0);
+  applyFilters();
+}
+
+/* ══ EXPORT ══════════════════════════════════════════ */
+function exportImg(fmt) {
+  if (!canvas.width) { toast('Carga una foto primero'); return; }
+  const ec=document.createElement('canvas');
+  ec.width=canvas._srcW||canvas.width; ec.height=canvas._srcH||canvas.height;
+  ec.getContext('2d').drawImage(canvas,0,0,ec.width,ec.height);
+
+  if (fmt==='pdf') {
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:ec.width>ec.height?'l':'p',unit:'px',format:[ec.width,ec.height]});
+    pdf.addImage(ec.toDataURL('image/jpeg',.92),'JPEG',0,0,ec.width,ec.height);
+    pdf.save('acasphoto.pdf'); toast('✅ PDF descargado'); return;
+  }
+  const mime=fmt==='png'?'image/png':'image/jpeg';
+  const a=document.createElement('a');
+  a.href=ec.toDataURL(mime,fmt==='jpg'?.92:1); a.download='acasphoto.'+fmt; a.click();
+  toast('✅ '+fmt.toUpperCase()+' descargado');
+}
+
+/* ══ GALERÍA ═════════════════════════════════════════ */
+function saveToGallery() {
+  if (!canvas.width) { toast('Nada para guardar aún'); return; }
+  try { localStorage.setItem('gallery_'+Date.now(), canvas.toDataURL('image/jpeg',.85)); toast('✅ Guardado en Mis Creaciones'); }
+  catch(e) { toast('⚠️ Sin espacio disponible'); }
+}
+function renderGallery() {
+  const grid=document.getElementById('gallery-grid');
+  grid.innerHTML='';
+  const keys=Object.keys(localStorage).filter(k=>k.startsWith('gallery_')).sort().reverse();
+  if (!keys.length) { grid.innerHTML='<div class="empty-gallery"><div class="big">🗂️</div><p>Aún no tienes creaciones guardadas</p></div>'; return; }
+  keys.forEach(k=>{
+    const item=document.createElement('div'); item.className='gallery-item';
+    const img=document.createElement('img'); img.src=localStorage.getItem(k);
+    const del=document.createElement('button'); del.className='del-btn'; del.textContent='✕';
+    del.onclick=e=>{ e.stopPropagation(); localStorage.removeItem(k); renderGallery(); };
+    img.onclick=()=>{ const a=document.createElement('a'); a.href=img.src; a.download=k+'.jpg'; a.click(); };
+    item.appendChild(img); item.appendChild(del); grid.appendChild(item);
+  });
+}
+function clearGallery() {
+  if (!confirm('¿Borrar todas las creaciones?')) return;
+  Object.keys(localStorage).filter(k=>k.startsWith('gallery_')).forEach(k=>localStorage.removeItem(k));
+  renderGallery();
+}
+
+/* ══ TOAST ═══════════════════════════════════════════ */
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
